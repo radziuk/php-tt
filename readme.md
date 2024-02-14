@@ -299,9 +299,13 @@ In your data file
 ```php vendor/aradziuk/php-tt/bin/run.php app tests/my-folder```
 
 ### Increase verbosity of the output
+
 ```php vendor/aradziuk/php-tt/bin/run.php 3```
+
 Any 1-digit number is interpreted as verbosity level. You can specify you custom folder and verbosity level like the following:
+
 ```php vendor/aradziuk/php-tt/bin/run.php custom/app 3```
+
 ```php vendor/aradziuk/php-tt/bin/run.php custom/app custom/data 3```
 
 
