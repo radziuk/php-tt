@@ -19,6 +19,12 @@
 
     require_once $dir . '/vendor/autoload.php';
 
+    \Aradziuk\PhpTT\Tt::enhance('not-equals', function(\ReflectionMethod $method, $object, array $params, $expected): array
+    {
+        $result = $method->invoke($object, ...$params);
+        return [$result !== $expected, $result];
+    });
+
     $Tt = new \Aradziuk\PhpTT\Tt();
     $Tt->run($srcDir, $dataDir);
 

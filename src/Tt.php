@@ -325,6 +325,7 @@ class Tt
      * @php-tt-assert 'Any.key', 'default' >>> ['hello']
      * @php-tt-assert 'Any', 'key2' >>> ['hello2']
      * @php-tt-assert 'Any.way', 'default' >>> []
+     * @php-tt-assert-not-equals 'Any.way', 'default' >>> 123
      */
     private function getDataFromDataSource(string $dataSource, string $methodName): array
     {
