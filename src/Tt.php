@@ -322,9 +322,9 @@ class Tt
      * @php-tt-mock @file_exists >>> true
      * @php-tt-exact-mock require $file >>> ['key' => ['hello'], 'key2' => ['hello2']]
      * @php-tt-mock alert >>> null
-     * @php-tt-go 'Any.key', 'default' >>> ['hello']
-     * @php-tt-go 'Any', 'key2' >>> ['hello2']
-     * @php-tt-go 'Any.way', 'default' >>> []
+     * @php-tt-assert 'Any.key', 'default' >>> ['hello']
+     * @php-tt-assert 'Any', 'key2' >>> ['hello2']
+     * @php-tt-assert 'Any.way', 'default' >>> []
      */
     private function getDataFromDataSource(string $dataSource, string $methodName): array
     {
@@ -463,8 +463,8 @@ class Tt
      * @param string $mock
      * @return array
      * @php-tt-mock @md5 >>> @php_tt_data
-     * @php-tt-go 'hello >>> ""' >>> ['mock_123', 'function mock_123(){return "";}']
-     * @php-tt-go 'hello >>> [""]' >>> ['mock_123', 'function mock_123(){return [""];}']
+     * @php-tt-assert 'hello >>> ""' >>> ['mock_123', 'function mock_123(){return "";}']
+     * @php-tt-assert 'hello >>> [""]' >>> ['mock_123', 'function mock_123(){return [""];}']
      */
     private function createMockFunction(string $mock, $index = 0): array
     {
@@ -517,12 +517,12 @@ class Tt
     /**
      * @param $left
      * @return string
-     * @php-tt-go '@hello' >>> '/hello\s*\(/'
-     * @php-tt-go 'hello' >>> '/\$this\s*->\s*hello\s*\(/'
-     * @php-tt-go '@$hello->world' >>> '/\$hello\s*->\s*world\s*\(/'
-     * @php-tt-go '@$hello  ->world' >>> '/\$hello\s*->\s*world\s*\(/'
-     * @php-tt-go '@App::run' >>> '/App\s*::\s*run\s*\(/'
-     * @php-tt-go "@App  ::  \nrun" >>> '/App\s*::\s*run\s*\(/'
+     * @php-tt-assert '@hello' >>> '/hello\s*\(/'
+     * @php-tt-assert 'hello' >>> '/\$this\s*->\s*hello\s*\(/'
+     * @php-tt-assert '@$hello->world' >>> '/\$hello\s*->\s*world\s*\(/'
+     * @php-tt-assert '@$hello  ->world' >>> '/\$hello\s*->\s*world\s*\(/'
+     * @php-tt-assert '@App::run' >>> '/App\s*::\s*run\s*\(/'
+     * @php-tt-assert "@App  ::  \nrun" >>> '/App\s*::\s*run\s*\(/'
      */
     private function makeMockLeft($left): string
     {
@@ -581,9 +581,9 @@ class Tt
     /**
      * @param string $line
      * @return string
-     * @php-tt-go '    * @hello' >>> '@hello'
-     * @php-tt-go '    * @hello@world' >>> '@hello@world'
-     * @php-tt-go "    * @php-tt-go '@php-tt-go'" >>> "@php-tt-go '@php-tt-go'"
+     * @php-tt-assert '    * @hello' >>> '@hello'
+     * @php-tt-assert '    * @hello@world' >>> '@hello@world'
+     * @php-tt-assert "    * @php-tt-assert '@php-tt-go'" >>> "@php-tt-go '@php-tt-go'"
      */
     private function prepareDocLine(string $line): string
     {

@@ -16,12 +16,13 @@ class StringReplacer
      * @param string $string
      * @return string
      * @php-tt-before $object->setPattern('#%s')
-     * @php-tt-go "hello" >>> "hello"
-     * @php-tt-go "'hello', world" >>> "#1, world"
-     * @php-tt-go "'hello', 'world'" >>> "#1, #2"
-     * @php-tt-go "'hello', 'world'man" >>> "#1, #2man"
-     * @php-tt-go '"hello", "world"man' >>> "#1, #2man"
-     * @php-tt-go-exception "'l'et's go"
+     * @php-tt-assert "hello" >>> "hello"
+     * @php-tt-assert "'hello', world" >>> "#1, world"
+     * @php-tt-assert "'hello', 'world'" >>> "#1, #2"
+     * @php-tt-assert "'hello', 'world'man" >>> "#1, #2man"
+     * @php-tt-assert '"hello", "world"man' >>> "#1, #2man"
+     * @php-tt-assert-preg '"hello", "world"man' >>> "/^.*$/"
+     * @php-tt-assert-exception "'l'et's go"
      */
     public function replaceStrings(string $string): string
     {
@@ -41,17 +42,17 @@ class StringReplacer
      * @return string
      * @throws TtException
      * @php-tt-before $object->setPattern('#%s')
-     * @php-tt-go "hello" >>> "hello"
-     * @php-tt-go "'hello'" >>> "#1"
-     * @php-tt-go "'hello', world" >>> "#1, world"
-     * @php-tt-go "@@!'hello', world" >>> "@@!#1, world"
-     * @php-tt-go "@@!'hello', world" >>> "@@!#1, world"
-     * @php-tt-go "@@!'hello', world '123'" >>> "@@!#1, world '123'"
-     * @php-tt-go '@@!"hello", world "123"' >>> '@@!#1, world "123"'
-     * @php-tt-go-exception "let's go"
-     * @php-tt-go-exception '"'
-     * @php-tt-go-exception "let's go" >>> \Aradziuk\PhpTT\TtException::class
-     * @php-tt-go-exception-contains '"' >>> "Missing"
+     * @php-tt-assert "hello" >>> "hello"
+     * @php-tt-assert "'hello'" >>> "#1"
+     * @php-tt-assert "'hello', world" >>> "#1, world"
+     * @php-tt-assert "@@!'hello', world" >>> "@@!#1, world"
+     * @php-tt-assert "@@!'hello', world" >>> "@@!#1, world"
+     * @php-tt-assert "@@!'hello', world '123'" >>> "@@!#1, world '123'"
+     * @php-tt-assert '@@!"hello", world "123"' >>> '@@!#1, world "123"'
+     * @php-tt-assert-exception "let's go"
+     * @php-tt-assert-exception '"'
+     * @php-tt-assert-exception "let's go" >>> \Aradziuk\PhpTT\TtException::class
+     * @php-tt-assert-exception-contains '"' >>> "Missing"
      */
     private function replaceStringOnce(string $string): string
     {

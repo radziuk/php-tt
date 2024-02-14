@@ -12,9 +12,9 @@ class TtGoParser
     /**
      * @param string $ttGo
      * @return array|string[]
-     * @php-tt-go '@php-tt-go 1,2 >>> 3' >>> [[1, 2], 3, 'equals']
-     * @php-tt-go '@php-tt-go "hello" >>> "world"' >>> [['hello'], 'world', 'equals']
-     * @php-tt-go '@php-tt-go-exception "hello"' >>> [['hello'], null, 'exception']
+     * @php-tt-assert '@php-tt-go 1,2 >>> 3' >>> [[1, 2], 3, 'equals']
+     * @php-tt-assert '@php-tt-go "hello" >>> "world"' >>> [['hello'], 'world', 'equals']
+     * @php-tt-assert '@php-tt-go-exception "hello"' >>> [['hello'], null, 'exception']
      */
     public function parse(string $ttGo)
     {
@@ -45,8 +45,8 @@ class TtGoParser
     /**
      * @param string $ttGo
      * @return array
-     * @php-tt-go '123 >>> 321' >>> [[123], 321]
-     * @php-tt-go '"123", [] >>> "hello"' >>> [['123', []], 'hello']
+     * @php-tt-assert '123 >>> 321' >>> [[123], 321]
+     * @php-tt-assert '"123", [] >>> "hello"' >>> [['123', []], 'hello']
      */
     private function processCleanTtGo(string $ttGo): array
     {
@@ -69,9 +69,9 @@ class TtGoParser
     /**
      * @param string $left
      * @return array
-     * @php-tt-go "'hello', 'world'" >>> ['hello', 'world']
-     * @php-tt-go "" >>> []
-     * @php-tt-go "''" >>> ['']
+     * @php-tt-assert "'hello', 'world'" >>> ['hello', 'world']
+     * @php-tt-assert "" >>> []
+     * @php-tt-assert "''" >>> ['']
      */
     private function makeLeft(string $left): array
     {

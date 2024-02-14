@@ -50,7 +50,6 @@ Text example #2
      * @php-tt-assert "'hello', 'world'" >>> "#1, #2"
      */
     public function replaceMarkers(string $string): string
-
 ```
 
 
@@ -297,6 +296,61 @@ In your data file
             return 'hello';
         })(),
 ];
+```
+### Other assertions
+
+#### Assert exception. 
+
+This asserts that the method will throw any exception
+```php
+    /**
+     * @param string $string
+     * @return string
+     * @php-tt-assert-exception "'hello', 'world'"
+     */
+    public function replaceMarkers(string $string): string
+```
+
+This asserts that the method will throw an exception of a certain class
+```php
+    /**
+     * @param string $string
+     * @return string
+     * @php-tt-assert-exception "'hello', 'world'" >>> \App\My\Exception::class
+     */
+    public function replaceMarkers(string $string): string
+```
+
+#### Assert exception contains
+This asserts that the method will throw an exception and the message will contain the text
+```php
+    /**
+     * @param string $string
+     * @return string
+     * @php-tt-assert-exception-contains "'hello', 'world'" >>> "My error text"
+     */
+    public function replaceMarkers(string $string): string
+```
+
+#### Assert  contains & preg
+This asserts that the result will contain the specified substring
+```php
+    /**
+     * @param string $string
+     * @return string
+     * @php-tt-assert-contains "'hello', 'world'" >>> "My error text"
+     */
+    public function replaceMarkers(string $string): string
+```
+
+This asserts that the result will match the specified regular expression
+```php
+    /**
+     * @param string $string
+     * @return string
+     * @php-tt-assert-preg "'hello', 'world'" >>> "/^.*$/"
+     */
+    public function replaceMarkers(string $string): string
 ```
 
 ### Use custom data folder
