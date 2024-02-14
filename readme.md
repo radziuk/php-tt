@@ -1,10 +1,10 @@
 Install the package
 
-```composer require aradziuk/php-tt```
+```composer require radziuk/php-tt```
 
 Run tests
 
-```php vendor/aradziuk/php-tt/bin/run.php```
+```php vendor/radziuk/php-tt/bin/run.php```
 
 **********
 
@@ -12,14 +12,14 @@ Run tests
 
 By default the runner uses the "app" folder to look for tests. You can specify a custom folder
 
-```php vendor/aradziuk/php-tt/bin/run.php src/lib```
+```php vendor/radziuk/php-tt/bin/run.php src/lib```
 
 
 ### Self-test the package
 
 After the package is install you can run the selftest script included in the package
 ```
-php vendor/aradziuk/php-tt/bin/selftest.php
+php vendor/radziuk/php-tt/bin/selftest.php
 ```
 
 Should input something like this:
@@ -354,17 +354,17 @@ This asserts that the result will match the specified regular expression
 ```
 
 ### Use custom data folder
-```php vendor/aradziuk/php-tt/bin/run.php app tests/my-folder```
+```php vendor/radziuk/php-tt/bin/run.php app tests/my-folder```
 
 ### Increase verbosity of the output
 
-```php vendor/aradziuk/php-tt/bin/run.php 3```
+```php vendor/radziuk/php-tt/bin/run.php 3```
 
 Any 1-digit number is interpreted as verbosity level. You can specify you custom folder and verbosity level like the following:
 
-```php vendor/aradziuk/php-tt/bin/run.php custom/app 3```
+```php vendor/radziuk/php-tt/bin/run.php custom/app 3```
 
-```php vendor/aradziuk/php-tt/bin/run.php custom/app custom/data 3```
+```php vendor/radziuk/php-tt/bin/run.php custom/app custom/data 3```
 
 
 ### Create your custom runner
