@@ -8,7 +8,7 @@
   },
   "autoload": {
     "psr-4": {
-      "Aradziuk\\PhpTT\\": "src/"
+      "Radziuk\\PhpTT\\": "src/"
     }
   },
   "authors": [
