@@ -189,19 +189,7 @@ Text example #10, mocking anything
 
 ### Define your test data in a separate file
 
-In you runner, specify the directory with your test data
-```php
-<?php
-
-require __DIR__.'/vendor/autoload.php';
-
-$tt = new \Aradziuk\PhpTT\Tt();
-
-$tt->run(
-    __DIR__ . '/app', //dir with your classes
-    __DIR__ . '/tests/php-tt-data'
-);
-```
+By default, the runner is looking for tests/php-tt-data folder, so you can create your data files there
 
 Create a data file
 ```
@@ -307,7 +295,17 @@ In your data file
 ];
 ```
 
-Create your custom runner
+### Use custom data folder
+```php vendor/aradziuk/php-tt/bin/run.php app tests/my-folder```
+
+### Increase verbosity of the output
+```php vendor/aradziuk/php-tt/bin/run.php 3```
+Any 1-digit number is interpreted as verbosity level. You can specify you custom folder and verbosity level like the following:
+```php vendor/aradziuk/php-tt/bin/run.php custom/app 3```
+```php vendor/aradziuk/php-tt/bin/run.php custom/app custom/data 3```
+
+
+### Create your custom runner
 
 ```touch testrunner.php```
 
