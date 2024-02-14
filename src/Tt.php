@@ -583,7 +583,7 @@ class Tt
      * @return string
      * @php-tt-assert '    * @hello' >>> '@hello'
      * @php-tt-assert '    * @hello@world' >>> '@hello@world'
-     * @php-tt-assert "    * @php-tt-assert '@php-tt-go'" >>> "@php-tt-go '@php-tt-go'"
+     * @php-tt-assert "    * @php-tt-assert '@php-tt-go'" >>> "@php-tt-assert '@php-tt-go'"
      */
     private function prepareDocLine(string $line): string
     {
