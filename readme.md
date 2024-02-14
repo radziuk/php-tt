@@ -2,28 +2,14 @@ Install the package
 
 ```composer require aradziuk/php-tt```
 
-Set up executable
-
-```touch testrunner.php```
-
-
-In your runner
-
-```php
-<?php
-
-require __DIR__.'/vendor/autoload.php';
-
-$tt = new \Aradziuk\PhpTT\Tt();
-
-$tt->run(
-    __DIR__ . '/app', //dir with your classes
-);
-```
-
 Run tests
 
-```php testrunner.php```
+```php vendor/aradziuk/php-tt/bin/run.php```
+
+By default the runner uses the "app" folder to look for tests. You can specify a custom folder
+
+```php vendor/aradziuk/php-tt/bin/run.php src/lib```
+
 
 ### Self-test the package
 
@@ -319,4 +305,21 @@ In your data file
             return 'hello';
         })(),
 ];
+```
+
+Create your custom runner
+
+```touch testrunner.php```
+
+```php
+<?php
+
+require __DIR__.'/vendor/autoload.php';
+
+$tt = new \Aradziuk\PhpTT\Tt();
+
+$tt->run(
+    __DIR__ . '/app', //dir with your classes
+    __DIR__ . '/test/php-tt' // dir with your data
+);
 ```
