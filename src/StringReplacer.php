@@ -51,7 +51,7 @@ class StringReplacer
      * @php-tt-assert '@@!"hello", world "123"' >>> '@@!#1, world "123"'
      * @php-tt-assert-exception "let's go"
      * @php-tt-assert-exception '"'
-     * @php-tt-assert-exception "let's go" >>> \Aradziuk\PhpTT\TtException::class
+     * @php-tt-assert-exception "let's go" >>> \Radziuk\PhpTT\TtException::class
      * @php-tt-assert-exception-contains '"' >>> "Missing"
      */
     private function replaceStringOnce(string $string): string
