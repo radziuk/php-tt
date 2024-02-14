@@ -1,0 +1,20 @@
+{
+  "name": "aradziuk/php-tt",
+  "description": "Docblock unit tests",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php-di/php-di": "^7.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Aradziuk\\PhpTT\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Aliaksei Radziuk",
+      "email": "aliakseiradziuk1@gmail.com"
+    }
+  ]
+}
