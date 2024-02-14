@@ -6,6 +6,8 @@ Run tests
 
 ```php vendor/aradziuk/php-tt/bin/run.php```
 
+**********
+
 ### Specify the folder
 
 By default the runner uses the "app" folder to look for tests. You can specify a custom folder
