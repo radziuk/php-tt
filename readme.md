@@ -383,3 +383,57 @@ $tt->run(
     __DIR__ . '/test/php-tt' // dir with your data
 );
 ```
+
+### Create your custom Laravel command
+
+```php artisan make:command PhpTT```
+
+In app/Console/Commands/PhpTT.php
+
+```php
+    $tt = new \Aradziuk\PhpTT\Tt();
+    $tt->setOutputCallback('info', function (string $string) {
+        $this->info($string);
+    })->setOutputCallback('error', function (string $string){
+        $this->error($string);
+    })->setOutputCallback('alert', function (string $string){
+        $this->alert($string);
+    }); // use artisan generic out put
+    
+    $tt->run(
+        app_path(),
+        base_path('tests/php-tt-data')
+    );
+```
+
+In app/Console/Kernel.php
+
+```php
+    
+    protected $commands = [
+        PhpTT::class,
+    ];
+```
+
+```
+php artisan app:php-tt
+```
+
+### Create your custom assertion
+```php
+    \Aradziuk\PhpTT\Tt::enhance('greater-than', function(\ReflectionMethod $method, $object, array $params, $expected): array
+    {
+        $result = $method->invoke($object, ...$params);
+        return [$result > $expected, $result];
+    });
+```
+
+In your tests
+```php
+    /**
+     * @param string $string
+     * @return string
+     * @php-tt-assert-greater-than 2, 2 >>> 3
+     */
+    public function multiply(int $x, int $y): int
+```

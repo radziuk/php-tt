@@ -739,4 +739,9 @@ class Tt
 
         return $this;
     }
+
+    public static function enhance(string $key, callable $closure): void
+    {
+        self::$_enhancedCommands[$key] = $closure;
+    }
 }
