@@ -19,7 +19,7 @@ By default the runner uses the "app" folder to look for tests. You can specify a
 
 After the package is install you can run the selftest script included in the package
 ```
-    php vendor/aradziuk/php-tt/bin/selftest.php
+php vendor/aradziuk/php-tt/bin/selftest.php
 ```
 
 Should input something like this:
