@@ -1,6 +1,6 @@
 <?php
 
-namespace Aradziuk\PhpTT;
+namespace Radziuk\PhpTT;
 
 class TtGoParser
 {

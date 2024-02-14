@@ -34,7 +34,7 @@ if (!is_dir($classes_dir)) {
     die("$classes_dir is not a directory, quitting.");
 }
 
-$Tt = new \Aradziuk\PhpTT\Tt();
+$Tt = new \Radziuk\PhpTT\Tt();
 $Tt->setVerbosity($verbosity)
     ->showWarnings($verbosity > 1);
 
