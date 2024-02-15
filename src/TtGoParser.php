@@ -80,7 +80,7 @@ class TtGoParser
 
     private function makeRight(string $right): mixed
     {
-        if (preg_match('/^@.*/', $right)) {
+        if (preg_match('/^#.*/', $right)) {
 
         }
         return eval(sprintf("return %s;", $right));

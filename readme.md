@@ -33,8 +33,6 @@ Info: Assertions true: 60
 Simple test, pass "hello" to the function, should return "hello"
 ```php
     /**
-     * @param string $string
-     * @return string
      * @php-tt-assert "hello" >>> "hello"
      */
     public function replaceMarkers(string $string): string
@@ -45,8 +43,6 @@ Simple test, pass "hello" to the function, should return "hello"
 Text example #2
 ```php
     /**
-     * @param string $string
-     * @return string
      * @php-tt-assert "'hello', 'world'" >>> "#1, #2"
      */
     public function replaceMarkers(string $string): string
@@ -56,9 +52,6 @@ Text example #2
 Text example #3
 ```php
     /**
-     * @param string $string
-     * @param int $count
-     * @return string
      * @php-tt-assert "'hello', 'world'", 1 >>> "#1, 'world'"
      */
     public function replaceMarkers(string $string, int $count): string
@@ -68,9 +61,6 @@ Text example #3
 Text example #4, passing an array
 ```php
     /**
-     * @param string $string
-     * @param int $count
-     * @return string
      * @php-tt-assert "'hello', 'world'", ['hello' => 'world'] >>> "#1, 'world'"
      */
     public function replaceMarkers(string $string, array $data): string
@@ -80,9 +70,6 @@ Text example #4, passing an array
 Text example #5, calling a method on the object before testing
 ```php
     /**
-     * @param string $string
-     * @param int $count
-     * @return string
      * @php-tt-before $object->setPattern('#%s')
      * @php-tt-assert "'hello', 'world'", ['hello' => 'world'] >>> "#1, 'world'"
      */
@@ -93,9 +80,6 @@ Text example #5, calling a method on the object before testing
 Text example #6, mocking $this->... method
 ```php
     /**
-     * @param string $dataSource
-     * @param string $methodName
-     * @return array
      * @php-tt-mock getFilenameFromDatasource >>> 'test.php'
      * @php-tt-assert 'Any.key', 'default' >>> ['default/test.php']
      */
@@ -113,9 +97,6 @@ Text example #6, mocking $this->... method
 Text example #7, mocking  method of a dependency
 ```php
     /**
-     * @param string $dataSource
-     * @param string $methodName
-     * @return array
      * @php-tt-mock service->getFilenameFromDatasource >>> 'test.php'
      * @php-tt-assert 'Any.key', 'default' >>> ['default/test.php']
      */
@@ -133,9 +114,6 @@ Text example #7, mocking  method of a dependency
 Text example #8, mocking global functions and methods
 ```php
     /**
-     * @param string $dataSource
-     * @param string $methodName
-     * @return array
      * @php-tt-mock @$service->getFilenameFromDatasource >>> 'test.php'
      * @php-tt-mock @getDataDirForMethod >>> 'default'
      * @php-tt-assert 'Any.key', 'default' >>> ['default/test.php']
@@ -153,9 +131,6 @@ Text example #8, mocking global functions and methods
 Text example #9, mocking a property
 ```php
     /**
-     * @param string $dataSource
-     * @param string $methodName
-     * @return array
      * @php-tt-mock @$service->getFilenameFromDatasource >>> 'test.php'
      * @php-tt-exact-mock $this->data_dir >>> '/var/www'
      * @php-tt-assert 'Any.key', 'default' >>> ['/var/www/test.php']
@@ -173,9 +148,6 @@ Text example #9, mocking a property
 Text example #10, mocking anything
 ```php
     /**
-     * @param string $dataSource
-     * @param string $methodName
-     * @return array
      * @php-tt-mock @self::getFilenameFromDatasource >>> 'test.php'
      * @php-tt-exact-mock require $methodName >>> '/var/www'
      * @php-tt-assert 'Any.key', 'default' >>> ['/var/www/test.php']
@@ -222,9 +194,6 @@ In your class
 
 ```php
     /**
-     * @param string $dataSource
-     * @param string $methodName
-     * @return array
      * @php-tt-mock @self::getFilenameFromDatasource >>> 'test.php'
      * @php-tt-exact-mock require $methodName >>> '/var/www'
      * @php-tt-data TestData
@@ -258,9 +227,6 @@ In your class
 
 ```php
     /**
-     * @param string $dataSource
-     * @param string $methodName
-     * @return array
      * @php-tt-mock @self::getFilenameFromDatasource >>> 'test.php'
      * @php-tt-exact-mock require $methodName >>> '/var/www'
      * @php-tt-data TestData.__my_custom_key__
@@ -275,11 +241,8 @@ In your class
 
 ```php
     /**
-     * @param string $dataSource
-     * @param string $methodName
-     * @return array
      * @php-tt-mock @self::getFilenameFromDatasource >>> 'test.php'
-     * @php-tt-exact-mock require $methodName >>> @TestData.my_mock
+     * @php-tt-exact-mock require $methodName >>> #TestData.my_mock
      * @php-tt-data TestData
      */
     private function getFileForDataSource(string $dataSource, string $methodName): array
@@ -304,8 +267,6 @@ In your data file
 This asserts that the method will throw any exception
 ```php
     /**
-     * @param string $string
-     * @return string
      * @php-tt-assert-exception "'hello', 'world'"
      */
     public function replaceMarkers(string $string): string
@@ -314,8 +275,6 @@ This asserts that the method will throw any exception
 This asserts that the method will throw an exception of a certain class
 ```php
     /**
-     * @param string $string
-     * @return string
      * @php-tt-assert-exception "'hello', 'world'" >>> \App\My\Exception::class
      */
     public function replaceMarkers(string $string): string
@@ -325,8 +284,6 @@ This asserts that the method will throw an exception of a certain class
 This asserts that the method will throw an exception and the message will contain the text
 ```php
     /**
-     * @param string $string
-     * @return string
      * @php-tt-assert-exception-contains "'hello', 'world'" >>> "My error text"
      */
     public function replaceMarkers(string $string): string
@@ -336,8 +293,6 @@ This asserts that the method will throw an exception and the message will contai
 This asserts that the result will contain the specified substring
 ```php
     /**
-     * @param string $string
-     * @return string
      * @php-tt-assert-contains "'hello', 'world'" >>> "My error text"
      */
     public function replaceMarkers(string $string): string
@@ -346,8 +301,6 @@ This asserts that the result will contain the specified substring
 This asserts that the result will match the specified regular expression
 ```php
     /**
-     * @param string $string
-     * @return string
      * @php-tt-assert-preg "'hello', 'world'" >>> "/^.*$/"
      */
     public function replaceMarkers(string $string): string
@@ -431,8 +384,6 @@ php artisan app:php-tt
 In your tests
 ```php
     /**
-     * @param string $string
-     * @return string
      * @php-tt-assert-greater-than 2, 2 >>> 3
      */
     public function multiply(int $x, int $y): int

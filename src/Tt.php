@@ -463,7 +463,7 @@ class Tt
     /**
      * @param string $mock
      * @return array
-     * @php-tt-mock @md5 >>> @php_tt_data
+     * @php-tt-mock @md5 >>> #php_tt_data
      * @php-tt-assert 'hello >>> ""' >>> ['mock_123', 'function mock_123(){return "";}']
      * @php-tt-assert 'hello >>> [""]' >>> ['mock_123', 'function mock_123(){return [""];}']
      */
@@ -487,17 +487,17 @@ class Tt
      * @return string
      * @php-tt-mock getDataDir >>> '/var/www'
      * @php-tt-mock @file_exists >>> true
-     * @php-tt-assert '@Data', 'default' >>> "(include '/var/www/Data.php')['default']"
-     * @php-tt-assert '@Data.parser', 'default' >>> "(include '/var/www/Data.php')['parser']"
-     * @php-tt-assert-contains '@Test.test-block', 'default' >>> "'test-block'"
+     * @php-tt-assert '#Data', 'default' >>> "(include '/var/www/Data.php')['default']"
+     * @php-tt-assert '#Data.parser', 'default' >>> "(include '/var/www/Data.php')['parser']"
+     * @php-tt-assert-contains '#Test.test-block', 'default' >>> "'test-block'"
      */
     private function makeMockFunctionReturn(string $return, string $defaultKey): ?string
     {
-        if (!preg_match('/^@/', $return)) {
+        if (!preg_match('/^#/', $return)) {
             return $return;
         }
 
-        $dataSource = preg_replace('/^@/', '', $return);
+        $dataSource = preg_replace('/^#/', '', $return);
 
         $fileName = $this->getFilenameFromDatasource($dataSource);
         $filePath = $this->getDataDir() . '/' . $fileName;
