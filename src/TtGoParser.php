@@ -5,7 +5,7 @@ namespace Radziuk\PhpTT;
 class TtGoParser
 {
 
-    public function __construct(protected StringReplacer $stringReplacer)
+    public function __construct(protected StringReplacer $stringReplacer, protected DataSourceProvider $dataSourceProvider)
     {
     }
 
@@ -60,6 +60,8 @@ class TtGoParser
         [$left, $right] = explode($delim, $preparedStr);
 
 
+        $left = $this->replaceDatasource($left);
+        $right = $this->replaceDatasource($right);
         $left = $this->makeLeft(trim($this->replaceBack($left)));
         $right = $this->makeRight(trim($this->replaceBack($right)));
 
@@ -76,6 +78,16 @@ class TtGoParser
     private function makeLeft(string $left): array
     {
         return eval(sprintf("return [%s];", $left));
+    }
+
+    /**
+     * @param string $left
+     * @return string
+     * @throws TtException
+     */
+    private function replaceDatasource(string $left): string
+    {
+        return $this->dataSourceProvider->replaceHashtaggedDatasourcesWithInclude($left);
     }
 
     private function makeRight(string $right): mixed
@@ -95,4 +107,5 @@ class TtGoParser
     {
         return $this->stringReplacer->replaceBack($string);
     }
+
 }

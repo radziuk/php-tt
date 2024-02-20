@@ -24,6 +24,8 @@ class Tt
     private Container $container;
     private TtGoParser $ttGoParser;
 
+    private DataSourceProvider $dataSourceProvider;
+
     private array $_output = [];
 
     private string $includeMode = 'eval';
@@ -36,7 +38,11 @@ class Tt
     {
         $builder = new ContainerBuilder();
         $this->container = $builder->build();
-        $this->ttGoParser = $this->container->get(TtGoParser::class);
+        $this->dataSourceProvider = $this->container->get(DataSourceProvider::class);
+        $this->dataSourceProvider->setAlertCallback(function (string $string) {
+            $this->alert($string);
+        });
+        $this->ttGoParser = new TtGoParser(new StringReplacer(), $this->dataSourceProvider);
         $this->initCommands();
     }
 
@@ -48,6 +54,7 @@ class Tt
         $this->class_dir = $directory = $class_dir;
 
         $this->data_dir = $data_dir;
+        $this->dataSourceProvider->setDataDir($data_dir);
 
         $this->cache_dir = $cache_dir;
 
@@ -318,52 +325,19 @@ class Tt
      * @param string $dataSource
      * @param string $methodName
      * @return array
-     * @php-tt-exact-mock $this->data_dir >>> '/var/www'
-     * @php-tt-mock @file_exists >>> true
-     * @php-tt-exact-mock require $file >>> ['key' => ['hello'], 'key2' => ['hello2']]
-     * @php-tt-mock alert >>> null
-     * @php-tt-assert 'Any.key', 'default' >>> ['hello']
-     * @php-tt-assert 'Any', 'key2' >>> ['hello2']
-     * @php-tt-assert 'Any.way', 'default' >>> []
-     * @php-tt-assert-not-equals 'Any.way', 'default' >>> 123
      */
     private function getDataFromDataSource(string $dataSource, string $methodName): array
     {
-        if (!$this->data_dir) {
-            $this->alert("Data dir for data source $dataSource is not specified. If you want to use  data source please specify \$data_dir when creating the object. Skipping");
-            return [];
-        }
-        $dataDir = $this->data_dir;
-
-        $fileName = $this->getFilenameFromDatasource($dataSource);
-        $file = $dataDir . '/' . $fileName;
-
-        if (!file_exists($file)) {
-            $this->alert("Data source file $file not found. Skipping");
-            return [];
-        }
-
-        $dataArray = require $file;
-
-        $dataKey = $this->getDataKeyFromDataSource($dataSource, $methodName);
-
-        if (!array_key_exists($dataKey, $dataArray)) {
-            $this->alert("Data is not set for key $dataKey in file $fileName. Skipping");
-            return [];
-        }
-
-        return $dataArray[$dataKey];
+        return $this->dataSourceProvider->getDataFromDataSource($dataSource, $methodName);
     }
 
     /**
      * @param string $dataSource
      * @return string
-     * @php-tt-data php_tt_data
      */
     private function getFilenameFromDatasource(string $dataSource): string
     {
-        $exploded = explode('.', $dataSource);
-        return array_shift($exploded) . '.php';
+        return $this->dataSourceProvider->getFilenameFromDatasource($dataSource);
     }
 
     private function makeClassObject(\ReflectionClass $classObject, string $methodName, array $mocks = []): mixed
@@ -485,28 +459,33 @@ class Tt
      * @param string $return
      * @param string $defaultKey
      * @return string
-     * @php-tt-mock getDataDir >>> '/var/www'
-     * @php-tt-mock @file_exists >>> true
-     * @php-tt-assert '#Data', 'default' >>> "(include '/var/www/Data.php')['default']"
-     * @php-tt-assert '#Data.parser', 'default' >>> "(include '/var/www/Data.php')['parser']"
-     * @php-tt-assert-contains '#Test.test-block', 'default' >>> "'test-block'"
+     * @php-tt-mock dataSourceProvider->replaceHashtaggedDatasourcesWithInclude >>> @@1
+     * @php-tt-assert 'hello . @@1' >>> 'hello . func_get_arg(0)'
      */
-    private function makeMockFunctionReturn(string $return, string $defaultKey): ?string
+    private function makeMockFunctionReturn(string $return, ?string $defaultKey = null): ?string
     {
-        if (!preg_match('/^#/', $return)) {
-            return $return;
-        }
+        $return = $this->dataSourceProvider
+            ->replaceHashtaggedDatasourcesWithInclude($return, $defaultKey);
 
-        $dataSource = preg_replace('/^#/', '', $return);
+        $return = $this->replaceDoubleAtWithArgv($return);
 
-        $fileName = $this->getFilenameFromDatasource($dataSource);
-        $filePath = $this->getDataDir() . '/' . $fileName;
-        if (!file_exists($filePath)) {
-            return null;
-        }
-        $dataKey = $this->getDataKeyFromDataSource($dataSource, $defaultKey);
+        return $return;
+    }
 
-        return sprintf("(include '%s')['%s']", $filePath, $dataKey);
+    /**
+     * @param string $string
+     * @return string
+     * @php-tt-assert '@@1' >>> 'func_get_arg(0)'
+     * @php-tt-assert '@@1 . "hello" . @@2' >>> 'func_get_arg(0) . "hello" . func_get_arg(1)'
+     */
+    private function replaceDoubleAtWithArgv(string $string): string
+    {
+        return preg_replace_callback('/@@(\d+)/', function ($matches) {
+            // $matches[1] contains the digit following '@@', which corresponds to the argument index.
+            $argIndex = intval($matches[1]) - 1;
+
+            return sprintf("func_get_arg(%s)", $argIndex);
+        }, $string);
     }
 
     private function createMockFind(string $mock, $make = true): string
@@ -548,16 +527,10 @@ class Tt
      * @param string $dataSource
      * @param string $methodName
      * @return string
-     * @php-tt-data php_tt_data
      */
     private function getDataKeyFromDataSource(string $dataSource, string $methodName): string
     {
-        $exploded = explode('.', $dataSource);
-        if (count($exploded) === 1) {
-            return $methodName;
-        }
-
-        return array_pop($exploded);
+        return $this->dataSourceProvider->getDataKeyFromDataSource($dataSource, $methodName);
     }
 
     private function getDataFromDockblock(string $docBlock): array
