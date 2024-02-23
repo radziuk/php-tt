@@ -21,6 +21,8 @@ class Tt
     protected static $_enhancedCommands = [
 
     ];
+
+    private array $_made = [];
     private Container $container;
     private TtGoParser $ttGoParser;
 
@@ -139,6 +141,11 @@ class Tt
                 $result = $method->invoke($object, ...$params);
                 return [str_contains($result, $expected), $result];
             },
+            'not-contains'  => function(\ReflectionMethod $method, $object, array $params, $expected): array
+            {
+                $result = $method->invoke($object, ...$params);
+                return [str_contains($result, $expected) === false, $result];
+            },
             'exception-contains'  => function(\ReflectionMethod $method, $object, array $params, $expected): array {
                 try {
                     $method->invoke($object, ...$params);
@@ -158,7 +165,25 @@ class Tt
                     }
                     return [$e instanceof $expected, get_class($e)];
                 }
-            }
+            },
+            'callable' => function(\ReflectionMethod $method, $object, array $params, $expected): array
+            {
+                $callableParams = [];
+                $callable = $expected;
+                if (is_array($expected)) {
+                    $callable = array_shift($expected);
+                    $callableParams = $expected;
+                }
+                if (!is_callable($callable)) {
+                    throw new TtException(sprintf("assert-callable: Expected callable, got %s instead", gettype($callable)));
+                }
+                $result = $method->invoke($object, ...$params);
+                $return = $callable($result, ...$callableParams);
+                if (!is_bool($return)) {
+                    throw new TtException(sprintf("assert-callable: Callable is expected to return bool, got %s instead", gettype($return)));
+                }
+                return [$return, $result];
+            },
         ];
 
         foreach($commands as $key => $closure) {
@@ -200,28 +225,13 @@ class Tt
      * @param string $dockblock
      * @return bool
      * @php-tt-data php_tt_data
+     * @php-tt-assert-callable 'dockblock' >>> function(bool $result){return $result === false;}
+     * @php-tt-assert-callable 'dockblock' >>> [function(bool $result, $expected){return $result === $expected;}, false]
+     * @php-tt-assert-callable 'dockblock' >>> [#php_tt_data.callable, #php_tt_data.callable_param]
      */
     private function isTestableFromDocblock(string $dockblock): bool
     {
         return preg_match('/@php-tt-/', $dockblock);
-    }
-
-    /**
-     * @param string $dockblock
-     * @return array
-     * @php-tt-data php_tt_data
-     */
-    private function getDataSourceFromDockblock(string $dockblock): ?string
-    {
-        $splitted = explode("\n", $dockblock);
-
-        foreach($splitted as $line) {
-            if (preg_match('/@php-tt-data (.*)/', $line, $match)) {
-                return $match[1];
-            }
-        }
-
-        return null;
     }
 
     private function doTests(array $parsedMap): void
@@ -231,72 +241,159 @@ class Tt
 
             array_walk($methods, function (\ReflectionMethod $method) use($reflectionObject){
                 $docBlock = $method->getDocComment();
-                $dataSource = $this->getDataSourceFromDockblock($docBlock);
 
-                $data = [];
-                if ($dataSource) {
-                    $data = array_merge($data, $this->getDataFromDataSource($dataSource, $method->getName()));
-                }
+                $lines = $this->getLinesFromDocblock($docBlock);
 
-                $data = array_merge($data, $this->getDataFromDockblock($docBlock));
-
-                $additional = $this->getAdditionalFromDockblock($docBlock);
-
-                $this->doTest($method, $reflectionObject, $data, $additional);
+                $this->doLines($method, $reflectionObject, $lines);
             });
         }
     }
 
-    private function doTest(\ReflectionMethod $method, \ReflectionClass $classObject, array $data, array $additional = []): void
+    /**
+     * @param string $docblock
+     * @return array
+     * @php-tt-data php_tt_data.getLinesFromDocblock
+     */
+    private function getLinesFromDocblock(string $docblock): array
+    {
+        $splitted = explode("\n", $docblock);
+
+        $lines = [];
+        foreach($splitted as $line) {
+            if (preg_match('/^\s*\*\s*@php-tt-(.*)/', $line, $match)) {
+                $lines[] = $match[1];
+            }
+        }
+
+        return $lines;
+    }
+
+    private function doLines(\ReflectionMethod $method, \ReflectionClass $classObject, array $lines): void
     {
         $signature = $classObject->getName() . '::' . $method->getName();
+        $mocks = [];
+        $before = [];
 
-        if (!count($data)) {
-            $this->alert("No data provided for $signature. Skipping");
-            return ;
+        foreach($lines as $line) {
+            $prepared = $this->prepareLine($line);
+            switch ($prepared['type']) {
+                case 'mock':
+                    $mock = $prepared['mock'];
+                    $find = $this->createMockFind($mock['mock']);
+                    $mocks[$find] = $mock;
+                    break;
+                case 'unmock':
+                    $mock = $prepared['mock'];
+                    $find = $this->createMockFind($mock['mock']);
+                    if (array_key_exists($find, $mocks)) {
+                        unset($mocks[$find]);
+                    }
+                    break;
+                case 'before':
+                    $before = [$prepared['before']];
+                    break;
+                case 'data':
+                    $data = $this->getDataFromDataSource($prepared['source'], $method->getName());
+                    foreach ($data as $assertion) {
+                        $this->doAssert($assertion, $method, $classObject, $mocks, $before);
+                        // print_r($assertion);
+                    }
+                    break;
+                case 'assertion':
+                    $this->doAssert($prepared['assertion'], $method, $classObject, $mocks, $before);
+                    break;
+            }
+        }
+    }
+
+    private function prepareLine(string $line): array
+    {
+        if (preg_match('/^before (.*)/', $line, $match)) {
+            $before = trim($match[1]);
+
+            if (!preg_match('/;$/', $before)) {
+                $before .= ';';
+            }
+
+            return ['type' => 'before', 'before' => $before];
         }
 
-        $objectToClone = $this->makeClassObject($classObject, $method->getName(), $additional['mock'] ?? []);
-        if (get_class($objectToClone) !== $classObject->getName()) {
-            $newReflection = new \ReflectionClass(get_class($objectToClone));
-            $method = $newReflection->getMethod($method->getName());
+        if (preg_match('/^mock (.*)/', $line, $match)) {
+            $mock = trim($match[1]);
+
+            return ['type' => 'mock', 'mock' => ['mock' => $mock, 'type' => 'mock']];
+        }
+
+        if (preg_match('/^unmock (.*)/', $line, $match)) {
+            $mock = trim($match[1]);
+
+            return ['type' => 'unmock', 'mock' => ['mock' => $mock, 'type' => 'mock']];
+        }
+
+        if (preg_match('/^exact-mock (.*)/', $line, $match)) {
+            $mock = trim($match[1]);
+
+            return ['type' => 'mock', 'mock' => ['mock' => $mock, 'type' => 'exact']];
+        }
+
+        if (preg_match('/^exact-unmock (.*)/', $line, $match)) {
+            $mock = trim($match[1]);
+
+            return ['type' => 'unmock', 'mock' => ['mock' => $mock, 'type' => 'exact']];
+        }
+
+        if (preg_match('/^data (.*)/', $line, $match)) {
+            $dataSource = trim($match[1]);
+
+            return ['type' => 'data', 'source' => $dataSource];
+        }
+
+        if (preg_match('/^(assert|go).*/', $line)) {
+            $command = preg_replace('/^(assert|go)/', '@php-tt-go', $line);
+            $parsed = $this->ttGoParser->parse($command);
+
+            return ['type' => 'assertion', 'assertion' => $parsed];
         }
 
 
-        if (!$method->isPublic()) {
-            $method->setAccessible(true);
+        throw new TtException(sprintf("Can't prepare line %s", $line));
+    }
+
+    private function doAssert(array $assertion, \ReflectionMethod $method, \ReflectionClass $classObject, array $mocks, array $before)
+    {
+        [$object, $newMethod] = $this->makeClassObject2($classObject, $method->getName(), $mocks);
+
+
+        if (!$newMethod->isPublic()) {
+            $newMethod->setAccessible(true);
         }
 
         $allowed_commands = array_keys($this->_commands);
-        foreach($data as $item) {
-            if (!array_key_exists(2, $item)) {
-                $item[2] = 'equals';
-            }
-            [$params, $expected, $command] = $item;
-            if (!in_array($command, $allowed_commands)) {
-                $this->alert("Unknown command `$command`. Skipping");
-                continue;
-            }
-
-            $object = clone $objectToClone;
-            if (array_key_exists('before', $additional)) {
-                foreach($additional['before'] as $runCommand) {
-                    eval($runCommand);
-                }
-            }
-
-            $executionResult = $this->_commands[$command]($method, $object, $params, $expected);
-            [$assertResult, $actualResult] = $executionResult;
-
-            if ($assertResult) {
-                $this->assertSuccessful($command, $params, $expected, $actualResult, $method->getName(), $classObject->getName());
-            } else {
-                $this->assertFailed($command, $params, $expected, $actualResult, $method->getName(), $classObject->getName());
-            }
-
-            $this->count++;
+        if (!array_key_exists(2, $assertion)) {
+            $assertion[2] = 'equals';
+        }
+        [$params, $expected, $command] = $assertion;
+        if (!in_array($command, $allowed_commands)) {
+            $this->alert("Unknown command `$command`. Skipping");
+            return ;
         }
 
+        if (count($before) > 0) {
+            foreach($before as $runCommand) {
+                eval($runCommand);
+            }
+        }
+
+        $executionResult = $this->_commands[$command]($newMethod, $object, $params, $expected);
+        [$assertResult, $actualResult] = $executionResult;
+
+        if ($assertResult) {
+            $this->assertSuccessful($command, $params, $expected, $actualResult, $method->getName(), $classObject->getName());
+        } else {
+            $this->assertFailed($command, $params, $expected, $actualResult, $method->getName(), $classObject->getName());
+        }
+
+        $this->count++;
     }
 
     private function assertSuccessful(string $command, array $params, $expected, $result, string $methodName, string $className): void
@@ -331,16 +428,7 @@ class Tt
         return $this->dataSourceProvider->getDataFromDataSource($dataSource, $methodName);
     }
 
-    /**
-     * @param string $dataSource
-     * @return string
-     */
-    private function getFilenameFromDatasource(string $dataSource): string
-    {
-        return $this->dataSourceProvider->getFilenameFromDatasource($dataSource);
-    }
-
-    private function makeClassObject(\ReflectionClass $classObject, string $methodName, array $mocks = []): mixed
+    private function makeClassObject2(\ReflectionClass $classObject, string $methodName, array $mocks = []): array
     {
         $class = $classObject->getName();
 
@@ -348,8 +436,11 @@ class Tt
         $shortenned = array_pop($exploded);
 
         $source = file_get_contents($classObject->getFileName());
-        $tmp = md5(time());
-        $newClass = $shortenned . '_' . $methodName . '_' . $tmp;
+        $md5 = md5($class . $methodName . print_r($mocks, true));
+        $newClass = $shortenned . '_' . $methodName . '_' . $md5;
+        if (array_key_exists($newClass, $this->_made)) {
+            return $this->getFromMade($newClass);
+        }
         if (count($mocks) > 0) {
             $source = $this->makeClassMocks($source, $classObject->getMethod($methodName), $mocks);
         }
@@ -365,8 +456,22 @@ class Tt
         $newFullClass = $namespace . $newClass;
         //  return new $newFullClass;
 
-        return $this->container->get($newFullClass);
+        $object = $this->container->get($newFullClass);
+        $newReflection = new \ReflectionClass(get_class($object));
+
+        $this->_made[$newClass] = [$object, $newReflection->getMethod($methodName)];
+
+        return $this->getFromMade($newClass);
     }
+
+    private function getFromMade(string $newClass): array
+    {
+        $return =  $this->_made[$newClass];
+        $return[0] = clone $return[0];
+
+        return $return;
+    }
+
 
     private function includeSource(string $source, string $newClass): void
     {
@@ -415,10 +520,10 @@ class Tt
      * @param string $source
      * @param string $mock
      * @return string
+     * @php-tt-mock $this->createMockFunction >>> ['hello', '']
      * @php-tt-data php_tt_data
-     * @php-tt-mock createMockFunction >>> ['hello', '']
      */
-    private function replaceMethodSourceWithMock(string $source, array $mock, int $index = 0): string
+    private function replaceMethodSourceWithMock(string $source, array $mock, int|string $index = 0): string
     {
         [$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock['mock'], $index);
         if ($mock['type'] === 'exact') {
@@ -441,7 +546,7 @@ class Tt
      * @php-tt-assert 'hello >>> ""' >>> ['mock_123', 'function mock_123(){return "";}']
      * @php-tt-assert 'hello >>> [""]' >>> ['mock_123', 'function mock_123(){return [""];}']
      */
-    private function createMockFunction(string $mock, $index = 0): array
+    private function createMockFunction(string $mock, string|int $index = 0): array
     {
         $split = explode('>>>', $mock);
         $return = $this->makeMockFunctionReturn(trim(array_pop($split)), trim($split[0]));
@@ -459,7 +564,7 @@ class Tt
      * @param string $return
      * @param string $defaultKey
      * @return string
-     * @php-tt-mock dataSourceProvider->replaceHashtaggedDatasourcesWithInclude >>> @@1
+     * @php-tt-mock $this->dataSourceProvider->replaceHashtaggedDatasourcesWithInclude >>> @@1
      * @php-tt-assert 'hello . @@1' >>> 'hello . func_get_arg(0)'
      */
     private function makeMockFunctionReturn(string $return, ?string $defaultKey = null): ?string
@@ -497,21 +602,22 @@ class Tt
     /**
      * @param $left
      * @return string
-     * @php-tt-assert '@hello' >>> '/hello\s*\(/'
-     * @php-tt-assert 'hello' >>> '/\$this\s*->\s*hello\s*\(/'
+     * @php-tt-assert '@hello' >>> '/\\\\?hello\s*\(/'
+     * @php-tt-assert '$this->hello' >>> '/\$this\s*->\s*hello\s*\(/'
      * @php-tt-assert '@$hello->world' >>> '/\$hello\s*->\s*world\s*\(/'
      * @php-tt-assert '@$hello  ->world' >>> '/\$hello\s*->\s*world\s*\(/'
-     * @php-tt-assert '@App::run' >>> '/App\s*::\s*run\s*\(/'
-     * @php-tt-assert "@App  ::  \nrun" >>> '/App\s*::\s*run\s*\(/'
+     * @php-tt-assert '@App::run' >>> '/\\\\?App\s*::\s*run\s*\(/'
+     * @php-tt-assert "@App  ::  \nrun" >>> '/\\\\?App\s*::\s*run\s*\(/'
      */
     private function makeMockLeft($left): string
     {
-        $start = ['$this', '->'];
-        if (preg_match('/^@.+/', $left)) {
-            $left = preg_replace('/^@/', '', $left);
-            $start = [];
+        $left = preg_replace('/^@/', '', $left);//legacy
+
+        $prep = '';
+        if (!preg_match('/^\$.+/', $left)) {
+                $prep = '\\\\?';
         }
-        $parts = array_merge($start, preg_split('/(::|->)/', $left, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY));
+        $parts = preg_split('/(::|->)/', $left, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
         //$join = "\\s*" . '->' . "\\s*";
         $parts = array_map(static function(string $part) {
             if (in_array($part, ['::', '->'])) {
@@ -520,114 +626,8 @@ class Tt
                 return preg_quote(trim($part));
             }
         }, $parts);
-        return '/' . join('', $parts) . '\s*\(/';
-    }
-
-    /**
-     * @param string $dataSource
-     * @param string $methodName
-     * @return string
-     */
-    private function getDataKeyFromDataSource(string $dataSource, string $methodName): string
-    {
-        return $this->dataSourceProvider->getDataKeyFromDataSource($dataSource, $methodName);
-    }
-
-    private function getDataFromDockblock(string $docBlock): array
-    {
-        $result = [];
-
-        $splitted = explode("\n", $docBlock);
-
-        foreach($splitted as $line) {
-            $line = $this->prepareDocLine($line);
-            $line = $this->prepareAliases($line);
-            if (preg_match('/^(@php-tt-go.*)/', $line, $match)) {
-                if (null !== $data = $this->processTtGoRecord($match[1])) {
-                    $result[] = $data;
-                }
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param string $line
-     * @return string
-     * @php-tt-assert '    * @hello' >>> '@hello'
-     * @php-tt-assert '    * @hello@world' >>> '@hello@world'
-     * @php-tt-assert "    * @php-tt-assert '@php-tt-go'" >>> "@php-tt-assert '@php-tt-go'"
-     */
-    private function prepareDocLine(string $line): string
-    {
-        $atPosition = strpos($line, '@');
-        if ($atPosition !== false) {
-            return trim(substr($line, $atPosition));
-        }
-
-        return trim($line);
-    }
-
-    private function prepareAliases(string $line): string
-    {
-        return preg_replace('/^@php-tt-assert/', '@php-tt-go', $line);
-    }
-
-    /**
-     * @param string $ttGo
-     * @return array|null
-     * @php-tt-mock ttGoParser->parse >>> null
-     * @php-tt-assert "world 123" >>> null
-     */
-    private function processTtGoRecord(string $ttGo): ?array
-    {
-        return $this->ttGoParser->parse($ttGo);
-    }
-
-    private function getAdditionalFromDockblock(string $docBlock): array
-    {
-        $result = [];
-
-        $splitted = explode("\n", $docBlock);
-
-        foreach($splitted as $line) {
-            $line = $this->prepareDocLine($line);
-            if (preg_match('/^@php-tt-before (.*)/', $line, $match)) {
-                if (!array_key_exists('before', $result)) {
-                    $result['before'] = [];
-                }
-                $before = trim($match[1]);
-
-                if (!preg_match('/;$/', $before)) {
-                    $before .= ';';
-                }
-
-                $result['before'][] = $before;
-            }
-
-            if (preg_match('/^@php-tt-mock (.*)/', $line, $match)) {
-                if (!array_key_exists('mock', $result)) {
-                    $result['mock'] = [];
-                }
-                $mock = trim($match[1]);
-
-                $result['mock'][] = ['type' => 'mock', 'mock' => $mock];
-            }
-
-            if (preg_match('/^@php-tt-exact-mock (.*)/', $line, $match)) {
-                if (!array_key_exists('mock', $result)) {
-                    $result['mock'] = [];
-                }
-                $mock = trim($match[1]);
-
-                $result['mock'][] = ['type' => 'exact', 'mock' => $mock];
-            }
-
-        }
-
-        return $result;
-
+        $return = '/' . $prep . join('', $parts) . '\s*\(/';
+        return $return;
     }
 
     private function clearCache()

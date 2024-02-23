@@ -13,9 +13,9 @@ class DataSourceProvider
      * @param string $methodName
      * @return array
      * @php-tt-exact-mock $this->data_dir >>> '/var/www'
-     * @php-tt-mock @file_exists >>> true
+     * @php-tt-mock file_exists >>> true
      * @php-tt-exact-mock require $file >>> ['key' => ['hello'], 'key2' => ['hello2']]
-     * @php-tt-mock alert >>> null
+     * @php-tt-mock $this->alert >>> null
      * @php-tt-assert 'Any.key', 'default' >>> ['hello']
      * @php-tt-assert 'Any', 'key2' >>> ['hello2']
      * @php-tt-assert 'Any.way', 'default' >>> []
@@ -86,13 +86,15 @@ class DataSourceProvider
      * @param string|null $defaultKey
      * @return string
      * @throws TtException
-     * @php-tt-mock getDataDir >>> '/var/www'
-     * @php-tt-mock @file_exists >>> true
+     * @php-tt-mock $this->getDataDir >>> '/var/www'
+     * @php-tt-mock file_exists >>> true
      * @php-tt-assert 'Data.test' >>> "(include '/var/www/Data.php')['test']"
      * @php-tt-assert 'Datadata.testtest' >>> "(include '/var/www/Datadata.php')['testtest']"
      * @php-tt-assert 'Datadata_2_.testtest_' >>> "(include '/var/www/Datadata_2_.php')['testtest_']"
      * @php-tt-assert #php_tt_data.getDataSourceInclude.1 >>> #php_tt_data.getDataSourceInclude.2
-     * @Todo: change @file_exists mock to false, and test TtException
+     * @php-tt-mock file_exists >>> false
+     * @php-tt-assert-exception 'Data.test'
+     * @php-tt-assert-exception-contains 'Data.test' >>> 'does not exist'
      */
     public function getDataSourceInclude(string $dataSource, ?string $defaultKey = null): string
     {
@@ -111,7 +113,7 @@ class DataSourceProvider
      * @return string
      * @throws TtException
      * @php-tt-assert 'hello' >>> 'hello'
-     * @php-tt-mock getDataSourceInclude >>> @@2
+     * @php-tt-mock $this->getDataSourceInclude >>> @@2
      * @php-tt-assert "hello, #dataSource.1, world", '#replace' >>> "hello, #replace, world"
      * @php-tt-assert "hello, #dataSource.1, world #data.hello.2", '#replace' >>> "hello, #replace, world #replace"
      * @php-tt-assert #php_tt_data._replace.0, '#replace' >>> #php_tt_data._replace.1

@@ -71,7 +71,7 @@ return [
                 '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
         $mockFind = $this->createMockFind($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);',
-                ['mock' => 'createMockFind', 'type' => 'mock'],
+                ['mock' => '$this->createMockFind', 'type' => 'mock'],
             ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
         $mockFind = hello($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);'
@@ -83,7 +83,7 @@ return [
         $mockFind = $this
         ->  createMockFind($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);',
-                ['mock' => 'createMockFind', 'type' => 'mock'],
+                ['mock' => '$this->createMockFind', 'type' => 'mock'],
             ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
         $mockFind = hello($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);'
@@ -97,7 +97,7 @@ return [
         ->
                 createMockFind        ($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);',
-                ['mock' => 'createMockFind', 'type' => 'mock'],
+                ['mock' => '$this->createMockFind', 'type' => 'mock'],
             ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
         $mockFind = hello($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);'
@@ -108,7 +108,7 @@ return [
                 '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
         $mockFind = $this->object->method($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);',
-                ['mock' => 'object->method', 'type' => 'mock'],
+                ['mock' => '$this->object->method', 'type' => 'mock'],
             ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
         $mockFind = hello($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);'
@@ -122,7 +122,7 @@ return [
 
             ->          method      ($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);',
-                ['mock' => 'object->method', 'type' => 'mock'],
+                ['mock' => '$this->object->method', 'type' => 'mock'],
             ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
         $mockFind = hello($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);'
@@ -134,7 +134,7 @@ return [
         $mockFind = callFunction
         ($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);',
-                ['mock' => '@callFunction', 'type' => 'mock'],
+                ['mock' => 'callFunction', 'type' => 'mock'],
             ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
         $mockFind = hello($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);'
@@ -147,7 +147,48 @@ return [
 
         callFunction        ($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);',
-                ['mock' => '@$global->callFunction', 'type' => 'mock'],
+                ['mock' => '$global->callFunction', 'type' => 'mock'],
+            ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
+        $mockFind = hello($mock);
+        return preg_replace($mockFind, $mockFunctionName, $source);'
+        ],
+        7 => [
+            [
+                '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
+        $mockFind = \createMockFind($mock);
+        return preg_replace($mockFind, $mockFunctionName, $source);',
+                ['mock' => 'createMockFind', 'type' => 'mock'],
+            ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
+        $mockFind = hello($mock);
+        return preg_replace($mockFind, $mockFunctionName, $source);'
+        ],
+        8 => [
+            [
+                '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
+        $mockFind = \request()->createMockFind($mock);
+        return preg_replace($mockFind, $mockFunctionName, $source);',
+                ['mock' => 'request()->createMockFind', 'type' => 'mock'],
+            ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
+        $mockFind = hello($mock);
+        return preg_replace($mockFind, $mockFunctionName, $source);'
+        ],
+        9 => [
+            [
+                '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
+        $mockFind = \request("hello")->createMockFind($mock);
+        return preg_replace($mockFind, $mockFunctionName, $source);',
+                ['mock' => 'request("hello")->createMockFind', 'type' => 'mock'],
+            ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
+        $mockFind = hello($mock);
+        return preg_replace($mockFind, $mockFunctionName, $source);'
+        ],
+        10 => [
+            [
+                '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
+        $mockFind = \request("hello", $world)
+        ->createMockFind($mock);
+        return preg_replace($mockFind, $mockFunctionName, $source);',
+                ['mock' => 'request("hello", $world)->createMockFind', 'type' => 'mock'],
             ], '[$mockFunctionName, $mockFunctionSource] = $this->createMockFunction($mock);
         $mockFind = hello($mock);
         return preg_replace($mockFind, $mockFunctionName, $source);'
@@ -159,5 +200,63 @@ return [
     ],
     '_replace' => [
         'Hello, #Data.1, world', 'Hello, #replace, world'
-    ]
+    ],
+
+    'getLinesFromDocblock' => [
+        0 => [
+            ['/**
+         * @param string $dockblock
+         * @return array
+         * @php-tt-data data1
+         */'], ['data data1']
+        ],
+
+        1 => [
+            ['/**
+         * @param string $dockblock
+         * @return array
+         * @php-tt-data data1
+          @php-tt-data data1
+         */'], ['data data1']
+        ],
+
+        2 => [
+            ['/**
+         * @param string $dockblock
+         * @return array
+         * @php-tt-data data1
+         * @php-tt-data data1
+          @php-tt-data data1
+         * @php-tt-assert-exception "data1" >>> hello::class
+         */'], ['data data1', 'data data1', 'assert-exception "data1" >>> hello::class']
+        ],
+        3 => [
+            ['/**
+         * @param string $dockblock
+         * @return array
+         * @php-tt-assert * @php-tt-assert
+         */'], ['assert * @php-tt-assert']
+        ],
+
+        4 => [
+            ['/**
+         * @param string $dockblock
+         * @return array
+*       @php-tt-assert * @php-tt-assert
+         */'], ['assert * @php-tt-assert']
+        ],
+
+        5 => [
+            ['/**
+         * @param string $dockblock
+         * @return array
+*       @php-tt-assert * @php-tt-assert
+       @php-tt-assert * @php-tt-assert
+         */'], ['assert * @php-tt-assert']
+        ],
+    ],
+    'callable' => function($result, $param){
+        return $result !== $param;
+    },
+    'callable_param' => true
 ];

@@ -40,6 +40,8 @@ $Tt->setVerbosity($verbosity)
 
 $data_dir = is_dir($data_dir) ? $data_dir : '';
 
-$Tt->run($classes_dir, $data_dir);
+$cache_dir = '';
+// $cache_dir = getcwd() . '/storage/tt-cache';
+$Tt->run($classes_dir, $data_dir, $cache_dir);
 
 

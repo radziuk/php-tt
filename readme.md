@@ -1,6 +1,6 @@
 Install the package
 
-```composer require --dev radziuk/php-tt```
+```composer require radziuk/php-tt```
 
 Run tests
 
