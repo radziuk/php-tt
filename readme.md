@@ -1,6 +1,6 @@
 Install the package
 
-```composer require radziuk/php-tt```
+```composer require --dev radziuk/php-tt```
 
 Run tests
 
@@ -24,8 +24,8 @@ php vendor/radziuk/php-tt/bin/selftest.php
 
 Should input something like this:
 ```
-Info: Assertions done: 60
-Info: Assertions true: 60
+Info: Assertions done: 85
+Info: Assertions true: 85
 ```
 
 ### Test examples
@@ -80,7 +80,7 @@ Text example #5, calling a method on the object before testing
 Text example #6, mocking $this->... method
 ```php
     /**
-     * @php-tt-mock getFilenameFromDatasource >>> 'test.php'
+     * @php-tt-mock $this->getFilenameFromDatasource >>> 'test.php'
      * @php-tt-assert 'Any.key', 'default' >>> ['default/test.php']
      */
     private function getFileForDataSource(string $dataSource, string $methodName): array
@@ -97,7 +97,7 @@ Text example #6, mocking $this->... method
 Text example #7, mocking  method of a dependency
 ```php
     /**
-     * @php-tt-mock service->getFilenameFromDatasource >>> 'test.php'
+     * @php-tt-mock $this->service->getFilenameFromDatasource >>> 'test.php'
      * @php-tt-assert 'Any.key', 'default' >>> ['default/test.php']
      */
     private function getFileForDataSource(string $dataSource, string $methodName): array
@@ -114,8 +114,8 @@ Text example #7, mocking  method of a dependency
 Text example #8, mocking global functions and methods
 ```php
     /**
-     * @php-tt-mock @$service->getFilenameFromDatasource >>> 'test.php'
-     * @php-tt-mock @getDataDirForMethod >>> 'default'
+     * @php-tt-mock $service->getFilenameFromDatasource >>> 'test.php'
+     * @php-tt-mock getDataDirForMethod >>> 'default'
      * @php-tt-assert 'Any.key', 'default' >>> ['default/test.php']
      */
     private function getFileForDataSource(string $dataSource, string $methodName): array
@@ -132,7 +132,7 @@ Text example #9, mocking a property
 ```php
     /**
      * @php-tt-mock @$service->getFilenameFromDatasource >>> 'test.php'
-     * @php-tt-exact-mock $this->data_dir >>> '/var/www'
+     * @php-tt-mock $this->data_dir >>> '/var/www'
      * @php-tt-assert 'Any.key', 'default' >>> ['/var/www/test.php']
      */
     private function getFileForDataSource(string $dataSource, string $methodName): array
@@ -148,7 +148,7 @@ Text example #9, mocking a property
 Text example #10, mocking anything
 ```php
     /**
-     * @php-tt-mock @self::getFilenameFromDatasource >>> 'test.php'
+     * @php-tt-mock self::getFilenameFromDatasource >>> 'test.php'
      * @php-tt-exact-mock require $methodName >>> '/var/www'
      * @php-tt-assert 'Any.key', 'default' >>> ['/var/www/test.php']
      */
@@ -227,7 +227,7 @@ In your class
 
 ```php
     /**
-     * @php-tt-mock @self::getFilenameFromDatasource >>> 'test.php'
+     * @php-tt-mock self::getFilenameFromDatasource >>> 'test.php'
      * @php-tt-exact-mock require $methodName >>> '/var/www'
      * @php-tt-data TestData.__my_custom_key__
      */
@@ -241,7 +241,7 @@ In your class
 
 ```php
     /**
-     * @php-tt-mock @self::getFilenameFromDatasource >>> 'test.php'
+     * @php-tt-mock self::getFilenameFromDatasource >>> 'test.php'
      * @php-tt-exact-mock require $methodName >>> #TestData.my_mock
      * @php-tt-data TestData
      */
