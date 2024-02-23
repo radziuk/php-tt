@@ -197,6 +197,29 @@ class Tt
         }
     }
 
+    private function makeAlias(string $alias): void
+    {
+        $preparedAlias = $this->ttGoParser->makeAlias($alias);
+        if (array_key_exists($preparedAlias['key'], $this->_commands)) {
+            throw new TtException(sprintf('Alias %s already exists', $preparedAlias['key']));
+        }
+        if (!is_callable($preparedAlias['callback'])) {
+            throw new TtException(sprintf("Can't make callable for alias %s", $alias));
+        }
+
+        $callable = $preparedAlias['callback'];
+        $key = $preparedAlias['key'];
+        $this->_commands[$key] = function(\ReflectionMethod $method, $object, array $params, $expected) use($callable, $key): array
+        {
+            $result = $method->invoke($object, ...$params);
+            $return = $callable($result, $expected);
+            if (!is_bool($return)) {
+                throw new TtException(sprintf("%s: Callable is expected to return bool, got %s instead", $key, gettype($return)));
+            }
+            return [$return, $result];
+        };
+    }
+
     /**
      * @param string $className
      * @return array
@@ -302,9 +325,13 @@ class Tt
                 case 'assertion':
                     $this->doAssert($prepared['assertion'], $method, $classObject, $mocks, $before);
                     break;
+                case 'alias':
+                    $this->makeAlias($prepared['alias']);
+                    break;
             }
         }
     }
+
 
     private function prepareLine(string $line): array
     {
@@ -346,6 +373,12 @@ class Tt
             $dataSource = trim($match[1]);
 
             return ['type' => 'data', 'source' => $dataSource];
+        }
+
+        if (preg_match('/^alias (.*)/', $line, $match)) {
+            $alias = trim($match[1]);
+
+            return ['type' => 'alias', 'alias' => $alias];
         }
 
         if (preg_match('/^(assert|go).*/', $line)) {
@@ -410,12 +443,28 @@ class Tt
             $this->error(sprintf("Test failed for %s->%s", $className, $methodName));
             $this->error(sprintf("Assert %s:  false", $command));
             if ($this->verbosity > 1) {
-                $this->error(sprintf("Parameters: %s", join(',', $params)));
-                $this->error(sprintf("Expected: %s", print_r($expected, true)));
-                $this->error(sprintf("Result: %s", print_r($result, true)));
+                $this->error(sprintf("Parameters: %s", $this->_print($params, true)));
+                $this->error(sprintf("Expected: %s", $this->_print($expected)));
+                $this->error(sprintf("Result: %s", $this->_print($expected)));
             }
         }
         $this->countFalse++;
+    }
+
+    private function _print(mixed $toprint, bool $join = false): string
+    {
+        if (is_object($toprint)) {
+            return sprintf("object %s", get_class($toprint));
+        }
+
+        if (is_array($toprint)) {
+            $toprint = array_map(fn ($item) => $this->_print($item), $toprint);
+            if ($join) {
+                return join(', ', $toprint);
+            }
+        }
+
+        return print_r($toprint, true);
     }
 
     /**

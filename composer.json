@@ -1,6 +1,6 @@
 {
   "name": "radziuk/php-tt",
-  "description": "Docblock unit tests",
+  "description": "Docblock unit tests library, unit test methods of your class directly in your doc block",
   "type": "library",
   "license": "MIT",
   "require": {
@@ -13,8 +13,8 @@
   },
   "authors": [
     {
-      "name": "Aliaksei Radziuk",
-      "email": "aliakseiradziuk1@gmail.com"
+      "name": "Developer Radziuk",
+      "email": "gitgittest@protonmail.com"
     }
   ]
 }

@@ -68,6 +68,24 @@ class TtGoParser
         return [$left, $right];
     }
 
+    public function makeAlias(string $alias): array
+    {
+        $delim = '>>>';
+        $preparedStr = $this->replaceStrings($alias);
+
+        [$left, $right] = explode($delim, $preparedStr);
+
+
+        $left = $this->replaceDatasource($left);
+        $right = $this->replaceDatasource($right);
+
+        //it's correct here
+        $left = $this->makeRight(trim($this->replaceBack($left)));
+        $right = $this->makeRight(trim($this->replaceBack($right)));
+
+        return ['key' => $left, 'callback' => $right];
+    }
+
     /**
      * @param string $left
      * @return array
