@@ -445,7 +445,7 @@ class Tt
             if ($this->verbosity > 1) {
                 $this->error(sprintf("Parameters: %s", $this->_print($params, true)));
                 $this->error(sprintf("Expected: %s", $this->_print($expected)));
-                $this->error(sprintf("Result: %s", $this->_print($expected)));
+                $this->error(sprintf("Result: %s", $this->_print($result)));
             }
         }
         $this->countFalse++;
