@@ -6,6 +6,10 @@ Run tests
 
 ```php vendor/radziuk/php-tt/bin/run.php```
 
+Use Laravel integrated runner
+
+```php vendor/radziuk/php-tt/bin/lararun.php```
+
 **********
 
 ### Specify the folder
@@ -306,6 +310,66 @@ This asserts that the result will match the specified regular expression
     public function replaceMarkers(string $string): string
 ```
 
+#### Assert callable
+This assertion allows you do define a callable that will handle the result of the method's execution and perform comparison with the expected result
+```php
+    /**
+     * @php-tt-assert-callable "hello, world" >>> [#TestData.my_callable, 'expected result']
+     */
+    public function replaceMarkers(string $string): string
+```
+In your tests/php-tt-data/TestData.php
+```php
+return [
+    'my_callable' => function(stdClass $result, $expected):bool {
+        return $result->property === $expected;
+    },
+];
+
+```
+
+Pass more parameters
+```php
+    /**
+     * @php-tt-assert-callable "hello, world" >>> [#TestData.my_callable, 'expected result', false]
+     */
+    public function replaceMarkers(string $string): string
+```
+
+In your tests/php-tt-data/TestData.php
+```php
+return [
+    'my_callable' => function(stdClass $result, $expected, $true = true):bool {
+        return $true ? $result->property === $expected : $result->property !== $expected;
+    },
+];
+
+```
+
+#### Create a alias
+```php
+    /**
+     * @php-tt-alias "property-equals" >>> #TestData.property_equals
+     * @php-tt-alias "property-not-equals" >>> #TestData.property_not_equals
+     * use your aliases
+     * @php-tt-assert-property-equals 'parameter' >>> 'expected'
+     * @php-tt-assert-property-not-equals 'parameter' >>> 'expected'
+     */
+    public function replaceMarkers(string $string): string
+```
+
+In your tests/php-tt-data/TestData.php
+```php
+return [
+    'property_equals' => function(stdClass $result, $expected):bool {
+        return $result->property === $expected;
+    },
+    'property_not_equals' => function(stdClass $result, $expected):bool {
+        return $result->property !== $expected;
+    },
+];
+
+
 ### Use custom data folder
 ```php vendor/radziuk/php-tt/bin/run.php app tests/my-folder```
 
@@ -336,6 +400,13 @@ $tt->run(
     __DIR__ . '/test/php-tt' // dir with your data
 );
 ```
+## Laravel integration
+
+### lararun.php
+
+lararun.php boots your laravel without database, logs and other providers, so in your tests you have access to lots of Laravel functionality, eg. facades, various providers etc
+
+```php vendor/radziuk/php-tt/bin/lararun.php```
 
 ### Create your custom Laravel command
 
@@ -344,7 +415,7 @@ $tt->run(
 In app/Console/Commands/PhpTT.php
 
 ```php
-    $tt = new \Aradziuk\PhpTT\Tt();
+    $tt = new \Radziuk\PhpTT\Tt();
     $tt->setOutputCallback('info', function (string $string) {
         $this->info($string);
     })->setOutputCallback('error', function (string $string){
@@ -372,9 +443,9 @@ In app/Console/Kernel.php
 php artisan app:php-tt
 ```
 
-### Create your custom assertion
+### Create your custom assertion (same as alias)
 ```php
-    \Aradziuk\PhpTT\Tt::enhance('greater-than', function(\ReflectionMethod $method, $object, array $params, $expected): array
+    \Radziuk\PhpTT\Tt::enhance('greater-than', function(\ReflectionMethod $method, $object, array $params, $expected): array
     {
         $result = $method->invoke($object, ...$params);
         return [$result > $expected, $result];
