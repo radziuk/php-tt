@@ -346,7 +346,7 @@ return [
 
 ```
 
-#### Create a alias
+#### Create an alias
 ```php
     /**
      * @php-tt-alias "property-equals" >>> #TestData.property_equals
@@ -368,7 +368,7 @@ return [
         return $result->property !== $expected;
     },
 ];
-
+```
 
 ### Use custom data folder
 ```php vendor/radziuk/php-tt/bin/run.php app tests/my-folder```
