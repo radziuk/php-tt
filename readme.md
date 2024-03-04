@@ -28,8 +28,8 @@ php vendor/radziuk/php-tt/bin/selftest.php
 
 Should input something like this:
 ```
-Info: Assertions done: 85
-Info: Assertions true: 85
+Info: Assertions done: 89
+Info: Assertions true: 89
 ```
 
 ### Test examples
@@ -401,11 +401,26 @@ $tt->run(
     __DIR__ . '/test/php-tt' // dir with your data
 );
 ```
+## Support of traits
+As of version 0.3 the support of trait has been added.
+During the testing, an anonymous class implementing the trait is initialized. To override this default behaviour you can use @php-tt-use-class
+```php
+    trait MyTrait {
+    /**
+     * @php-tt-use-class My\Namespace\CustomClass
+     * the above command will tell PhpTT to use the object of My\CustomClass for testing this method. The class should use the trait 
+     * @php-tt-assert "#1, #2" >>> 'hello, world'
+     */
+    public function replaceMarkers(string $string): string
+```
+
+
 ## Laravel integration
 
 ### lararun.php
 
 lararun.php boots your laravel without database, logs and other providers, so in your tests you have access to lots of Laravel functionality, eg. facades, various providers etc
+Please note that currently lararun.php is in alpha version, and it is highly recommended to mock out all the code that can cause permanent changes to your data  
 
 ```php vendor/radziuk/php-tt/bin/lararun.php```
 

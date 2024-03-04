@@ -28,6 +28,6 @@
     $Tt = new \Radziuk\PhpTT\Tt();
 
     $cache_dir = '';
-    // $cache_dir = getcwd() . '/storage/tt-cache';
+    $cache_dir = getcwd() . '/storage/tt-cache';
     $Tt->run($srcDir, $dataDir, $cache_dir);
 

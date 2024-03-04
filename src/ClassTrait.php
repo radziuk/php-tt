@@ -66,7 +66,8 @@ trait ClassTrait
      * @param string $replace
      * @param string $source
      * @return string
-     * @php-tt-assert 'TestTrait', 'TestTrait2', #php_tt_data.class_with_many_traits.1
+     * @php-tt-use-class Radziuk\PhpTT\Tt
+     * @php-tt-assert 'TestTrait', 'TestTrait123', #php_tt_data.class_with_many_traits.1 >>> #php_tt_data.class_with_many_traits.2
      */
     protected function replaceTraitRegex(string $find, string $replace, string $source): string
     {
@@ -75,7 +76,9 @@ trait ClassTrait
             $replacement = function ($matches) use($find, $replace) {
                 // Split the matched string by commas, trim whitespace, and replace TraitA with TraitB
                 $traits = array_map('trim', explode(',', $matches[1]));
-                $traits = str_replace($find, $replace, $traits);
+                $traits = array_map(static function(string $trait) use ($find, $replace){
+                    return $trait === $find ? $replace : $trait;
+                }, $traits);
                 return 'use ' . implode(', ', $traits) . ';';
             };
 

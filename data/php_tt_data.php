@@ -276,5 +276,8 @@ return [
 {
     use TestTrait, TestTestTrait;
     }",
-        '2' => ]
+        '2' => "class Tt extends Test
+{
+    use TestTrait123, TestTestTrait;
+    }"]
 ];
