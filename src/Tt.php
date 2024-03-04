@@ -4,9 +4,16 @@ namespace Radziuk\PhpTT;
 
 use DI\Container;
 use DI\ContainerBuilder;
+use PhpParser\Error;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor\NameResolver;
+use PhpParser\ParserFactory;
+use PhpParser\NodeVisitorAbstract;
+use PhpParser\Node;
 
 class Tt
 {
+    use ClassTrait;
     protected int $count = 0;
     protected int $countTrue = 0;
     protected int $countFalse = 0;
@@ -22,6 +29,8 @@ class Tt
 
     ];
 
+    protected $useClass = null;
+
     private array $_made = [];
     private Container $container;
     private TtGoParser $ttGoParser;
@@ -36,6 +45,8 @@ class Tt
 
     private bool $isShowWarnings = false;
 
+    private array $foundConcreteClasses = [];
+
     public function __construct()
     {
         $builder = new ContainerBuilder();
@@ -46,6 +57,43 @@ class Tt
         });
         $this->ttGoParser = new TtGoParser(new StringReplacer(), $this->dataSourceProvider);
         $this->initCommands();
+    }
+
+    public function getParserAndTraverser(): array
+    {
+        $parser = (new ParserFactory)->createForNewestSupportedVersion();
+        $traverser = new class extends NodeTraverser{
+            public function setVisitorFilePath($path) {
+                $this->visitors[1]->path = $path;
+            }
+        };
+        $traverser->addVisitor(new NameResolver); // Resolve names
+
+// Custom node visitor to collect class names
+        $myClassVisitor = new class extends NodeVisitorAbstract {
+            public $classes = [];
+            public $abstractClasses = [];
+            public $traits = [];
+            public $path;
+
+            public function enterNode(Node $node) {
+                if ($node instanceof Node\Stmt\Class_) {
+                    if (!$node->isAnonymous()) {
+                        if ($node->isAbstract()) {
+                            $this->abstractClasses[$node->namespacedName->toString()] = $this->path;
+                        } else {
+                            $this->classes[$node->namespacedName->toString()] = $this->path;
+                        }
+                    }
+                }
+                if ($node instanceof Node\Stmt\Trait_) {
+                    $this->traits[$node->namespacedName->toString()] = $this->path;
+                }
+            }
+        };
+        $traverser->addVisitor($myClassVisitor);
+
+        return [$parser, $traverser, $myClassVisitor];
     }
 
     /**
@@ -68,43 +116,33 @@ class Tt
         $iterator = new \RecursiveIteratorIterator($directoryIterator);
         $phpFiles = new \RegexIterator($iterator, '/^.+\.php$/i', \RecursiveRegexIterator::GET_MATCH);
 
-        $classMap = [];
+        [$parser, $traverser, $classVisitor] = $this->getParserAndTraverser();
 
         foreach ($phpFiles as $phpFile) {
             $filePath = $phpFile[0];
-
-            // Extract the contents of the file
-            $content = file_get_contents($filePath);
-
-            // Use a regular expression to find class names
-            $namespace = '';
-            $namespacePattern = '/namespace\s+([^;]+);/';
-            preg_match($namespacePattern, $content, $namespaceMatches);
-            if (!empty($namespaceMatches[1])) {
-                $namespace = $namespaceMatches[1] . '\\';
-            }
-
-            // Get all class names in the file
-            $classPattern = '/class\s+([a-zA-Z0-9_]+)\s*/';
-            preg_match_all($classPattern, $content, $classMatches);
-
-            if (!empty($classMatches[1])) {
-                foreach ($classMatches[1] as $className) {
-                    $fullClassName = $namespace . $className;
-                    try {
-                        $this->container->get($fullClassName);
-                        $classMap[$fullClassName] = $filePath;
-                    } catch (\Throwable $e) {
-                        continue;
-
-                    }
-                }
-            }
+            $code = file_get_contents($filePath);
+            $traverser->setVisitorFilePath($filePath);
+            $stmts = $parser->parse($code);
+            $traverser->traverse($stmts);
         }
 
+        $this->foundConcreteClasses = $classVisitor->classes;
+
         $parsedMap = [];
-        foreach($classMap as $className => $path) {
-            $parsed = $this->parseClass($className);
+        foreach($classVisitor->classes as $className => $path) {
+            $parsed = $this->parseClass($className, 'class');
+            if (count($parsed)) {
+                $parsedMap[$className] = $parsed;
+            }
+        }
+        foreach($classVisitor->traits as $className => $path) {
+            $parsed = $this->parseClass($className, 'trait');
+            if (count($parsed)) {
+                $parsedMap[$className] = $parsed;
+            }
+        }
+        foreach($classVisitor->abstractClasses as $className => $path) {
+            $parsed = $this->parseClass($className, 'abstract');
             if (count($parsed)) {
                 $parsedMap[$className] = $parsed;
             }
@@ -225,23 +263,38 @@ class Tt
      * @return array
      * @throws \ReflectionException
      */
-    private function parseClass(string $className): array
+    private function parseClass(string $className, string $type): array
     {
         $result = [];
         $reflectionClass = new \ReflectionClass($className);
         $methods = $reflectionClass->getMethods();
         foreach ($methods as $method) {
             if ($this->isTestableFromDocblock($method->getDocComment())) {
-
+                if ($type === 'class' && $this->isDeclaredInTrait($method)) {
+                    continue;
+                }
                 $result[$method->getName()] = $method;
             }
         }
 
 
         return  count($result) ? [
-            'reflectionObject' => $reflectionClass,
-            'methods' => $result
+            'reflectionClass' => $reflectionClass,
+            'methods' => $result,
+            'type' => $type,
         ] : [];
+    }
+
+    private function isDeclaredInTrait(\ReflectionMethod $method): bool
+    {
+        $class = $method->getDeclaringClass();
+        foreach($class->getTraits() as $trait) {
+            if ($trait->hasMethod($method->getName())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -260,14 +313,14 @@ class Tt
     private function doTests(array $parsedMap): void
     {
         foreach($parsedMap as $className => $parsedClass) {
-            [$reflectionObject, $methods] = array_values($parsedClass);
+            [$reflectionObject, $methods, $type] = array_values($parsedClass);
 
-            array_walk($methods, function (\ReflectionMethod $method) use($reflectionObject){
+            array_walk($methods, function (\ReflectionMethod $method) use($reflectionObject, $type){
                 $docBlock = $method->getDocComment();
 
                 $lines = $this->getLinesFromDocblock($docBlock);
 
-                $this->doLines($method, $reflectionObject, $lines);
+                $this->doLines($method, $reflectionObject, $lines, $type);
             });
         }
     }
@@ -291,11 +344,15 @@ class Tt
         return $lines;
     }
 
-    private function doLines(\ReflectionMethod $method, \ReflectionClass $classObject, array $lines): void
+    private function doLines(\ReflectionMethod $method, \ReflectionClass $classObject, array $lines, string $type): void
     {
-        $signature = $classObject->getName() . '::' . $method->getName();
+        if ($type === 'abstract') {
+            $this->alert('Abstract classes are not supported. The support will be added in the next version. Skipping');
+            return;
+        }
         $mocks = [];
         $before = [];
+        $this->useClass = null;
 
         foreach($lines as $line) {
             $prepared = $this->prepareLine($line);
@@ -318,16 +375,21 @@ class Tt
                 case 'data':
                     $data = $this->getDataFromDataSource($prepared['source'], $method->getName());
                     foreach ($data as $assertion) {
-                        $this->doAssert($assertion, $method, $classObject, $mocks, $before);
+                        $this->doAssert($assertion, $method, $classObject, $mocks, $before, $type);
                         // print_r($assertion);
                     }
                     break;
                 case 'assertion':
-                    $this->doAssert($prepared['assertion'], $method, $classObject, $mocks, $before);
+                    $this->doAssert($prepared['assertion'], $method, $classObject, $mocks, $before, $type);
                     break;
                 case 'alias':
                     $this->makeAlias($prepared['alias']);
                     break;
+                case 'use-class':
+                    $this->useClass = $prepared['class'];
+                    break;
+                case 'skip':
+                    return;
             }
         }
     }
@@ -381,6 +443,12 @@ class Tt
             return ['type' => 'alias', 'alias' => $alias];
         }
 
+        if (preg_match('/^use-class (.*)/', $line, $match)) {
+            $class = trim($match[1]);
+
+            return ['type' => 'use-class', 'class' => $class];
+        }
+
         if (preg_match('/^(assert|go).*/', $line)) {
             $command = preg_replace('/^(assert|go)/', '@php-tt-go', $line);
             $parsed = $this->ttGoParser->parse($command);
@@ -388,13 +456,17 @@ class Tt
             return ['type' => 'assertion', 'assertion' => $parsed];
         }
 
+        if (preg_match('/^skip/', $line)) {
+            return ['type' => 'skip'];
+        }
+
 
         throw new TtException(sprintf("Can't prepare line %s", $line));
     }
 
-    private function doAssert(array $assertion, \ReflectionMethod $method, \ReflectionClass $classObject, array $mocks, array $before)
+    private function doAssert(array $assertion, \ReflectionMethod $method, \ReflectionClass $classObject, array $mocks, array $before, string $type)
     {
-        [$object, $newMethod] = $this->makeClassObject2($classObject, $method->getName(), $mocks);
+        [$object, $newMethod] = $this->makeClassObject2($classObject, $method->getName(), $mocks, $type);
 
 
         if (!$newMethod->isPublic()) {
@@ -477,24 +549,26 @@ class Tt
         return $this->dataSourceProvider->getDataFromDataSource($dataSource, $methodName);
     }
 
-    private function makeClassObject2(\ReflectionClass $classObject, string $methodName, array $mocks = []): array
+    private function makeClassObject2(\ReflectionClass $classObject, string $methodName, array $mocks = [], string $type = 'class'): array
     {
         $class = $classObject->getName();
 
-        $exploded = explode("\\", $class);
-        $shortenned = array_pop($exploded);
+        $additional = $this->useClass === null ? '' : str_replace("\\", '_', $this->useClass) . '_';
 
-        $source = file_get_contents($classObject->getFileName());
-        $md5 = md5($class . $methodName . print_r($mocks, true));
-        $newClass = $shortenned . '_' . $methodName . '_' . $md5;
+        [$newClass, $shortenned] = $this->makeNewClassName($class, $methodName, $mocks, $additional);
         if (array_key_exists($newClass, $this->_made)) {
             return $this->getFromMade($newClass);
         }
+        $source = file_get_contents($classObject->getFileName());
         if (count($mocks) > 0) {
             $source = $this->makeClassMocks($source, $classObject->getMethod($methodName), $mocks);
         }
 
-        $source = preg_replace(sprintf('/\bclass %s/', $shortenned), sprintf('class %s', $newClass), $source);
+        if ($type === 'trait') {
+            $source = preg_replace(sprintf('/\btrait %s/', $shortenned), sprintf('trait %s', $newClass), $source);
+        } else  {
+            $source = $this->replaceClassName($shortenned, $newClass, $source);
+        }
 
         $this->includeSource($source, $newClass);
 
@@ -504,13 +578,54 @@ class Tt
         }
         $newFullClass = $namespace . $newClass;
         //  return new $newFullClass;
-
-        $object = $this->container->get($newFullClass);
+        if ($type === 'trait') {
+            $object = $this->getTraitObject($newFullClass, $class);
+        } else {
+            $object = $this->container->get($newFullClass);
+        }
         $newReflection = new \ReflectionClass(get_class($object));
 
         $this->_made[$newClass] = [$object, $newReflection->getMethod($methodName)];
 
         return $this->getFromMade($newClass);
+    }
+
+    private function getTraitObject($fullTraitClass, $originalTraitClass) {
+        $class = $this->getClassThatUsesTrait($fullTraitClass, $originalTraitClass);
+        return  $this->isAnonymousClass($class) ? eval("return new {$class};") : $this->container->get($class);
+    }
+
+    /**
+     * @param $fullTraitClass
+     * @return string
+     * @php-tt-assert-contains 'HelloClass', '' >>> 'class {'
+     * @php-tt-assert-contains 'HelloClass', '' >>> 'use HelloClass;'
+     */
+    private function getClassThatUsesTrait(string $fullTraitClass, string $originalTraitFullClass): string {
+        if ($this->useClass !== null) {
+            if (array_key_exists($this->useClass, $this->foundConcreteClasses)) {
+              //  dd($this->useClass);
+                $reflectionClass = new \ReflectionClass($this->useClass);
+                $additional = str_replace("\\", "_", $originalTraitFullClass);
+                [$newClass, $shortenned] = $this->makeNewClassName($reflectionClass->getName(), '', [], $additional);
+                $source = file_get_contents($reflectionClass->getFileName());
+                $source = $this->replaceUsesTrait($originalTraitFullClass, $fullTraitClass, $source);
+                $source = $this->replaceClassName($shortenned, $newClass, $source);
+                $this->includeSource($source, $newClass);
+                $namespace = '';
+                if (preg_match('/namespace\s+([^;]+);/', $source, $matches)) {
+                    $namespace = "\\" . $matches[1] . "\\";
+                }
+                $newFullClass = $namespace . $newClass;
+
+                return $newFullClass;
+            } else {
+                $this->alert(sprintf("Class %s is not found in the loaded classes list. Using anonymous class instead"));
+            }
+        }
+        return "class {
+            use $fullTraitClass;
+        }";
     }
 
     private function getFromMade(string $newClass): array

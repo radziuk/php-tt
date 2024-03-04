@@ -258,5 +258,23 @@ return [
     'callable' => function($result, $param){
         return $result !== $param;
     },
-    'callable_param' => true
+    'callable_param' => true,
+    'class_with_trait_source' => [
+        '1' => "class Tt extends Test
+{
+    use TestTrait;
+    use MoreTrait;
+    }",
+        '2' => "class Tt extends Test
+{
+    use Hello\\World\\TestTrait;
+    use MoreTrait;
+    }"
+    ],
+    'class_with_many_traits' => [
+        '1' => "class Tt extends Test
+{
+    use TestTrait, TestTestTrait;
+    }",
+        '2' => ]
 ];
