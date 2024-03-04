@@ -408,7 +408,7 @@ During the testing, an anonymous class implementing the trait is initialized. To
     trait MyTrait {
     /**
      * @php-tt-use-class My\Namespace\CustomClass
-     * the above command will tell PhpTT to use the object of My\CustomClass for testing this method. The class should use the trait 
+     * the above command will tell php-tt to use the object of My\Namespace\CustomClass for testing this method. The class should use the trait 
      * @php-tt-assert "#1, #2" >>> 'hello, world'
      */
     public function replaceMarkers(string $string): string
